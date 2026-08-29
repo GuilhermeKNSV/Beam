@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob: mediastream:; style-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss: http: https:;" />
+  <title>Beam</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Home -->
+    <section id="view-home" class="view active">
+      <div class="home-center">
+        <div class="home-logo-mark">B</div>
+        <h1 class="logo">Beam</h1>
+        <p class="tagline">Local-first voice, screenshare &amp; file transfer</p>
+        <div class="home-actions">
+          <button id="btn-host" class="btn primary big">Host a room</button>
+          <button id="btn-enter" class="btn big">Enter a room</button>
+        </div>
+      </div>
+      <button id="btn-update-home" class="icon-btn corner" title="Check for updates" style="right:50px">&#128260;</button>
+    <button id="btn-settings-home" class="icon-btn corner" title="Settings">⚙</button>
+    </section>
+
+    <!-- Host form -->
+    <section id="view-host" class="view">
+      <div class="form-card">
+        <h2>Host a room</h2>
+        <label class="field"><span class="field-label">Display name</span>
+          <input id="host-name" type="text" placeholder="Your name" />
+        </label>
+        <label class="field"><span class="field-label">Room name</span>
+          <input id="host-room" type="text" placeholder="My room" />
+        </label>
+        <label class="field"><span class="field-label">Room password (optional)</span>
+          <input id="host-password" type="password" placeholder="Leave empty for no password" />
+        </label>
+        <label class="field"><span class="field-label">Port</span>
+          <input id="host-port" type="number" min="0" max="65535" value="5310" />
+        </label>
+        <div class="form-actions">
+          <button id="host-back" class="btn">Back</button>
+          <button id="host-start" class="btn primary">Start room</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Enter form -->
+    <section id="view-enter" class="view">
+      <div class="form-card">
+        <h2>Enter a room</h2>
+        <label class="field"><span class="field-label">Display name</span>
+          <input id="enter-name" type="text" placeholder="Your name" />
+        </label>
+        <label class="field"><span class="field-label">Server address</span>
+          <input id="enter-address" type="text" placeholder="public-ip:5310 or 192.168.x.x:5310" />
+        </label>
+        <label class="field"><span class="field-label">Room code</span>
+          <input id="enter-code" type="text" placeholder="8-character code" autocapitalize="characters" />
+        </label>
+        <label class="field"><span class="field-label">Room password (only if the room has one)</span>
+          <input id="enter-password" type="password" placeholder="Optional" />
+        </label>
+        <div class="form-actions">
+          <button id="enter-back" class="btn">Back</button>
+          <button id="enter-join" class="btn primary">Join room</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Room -->
+    <section id="view-room" class="view">
+      <div class="room-shell">
+        <!-- Far-left slim rail -->
+        <nav class="rail">
+          <div class="rail-top">
+            <div class="rail-logo" title="Beam">B</div>
+            <div class="rail-avatar" id="rail-avatar" title="Room">B</div>
+          </div>
+          <div class="rail-bottom">
+            <button id="btn-update-room" class="icon-btn corner" title="Check for updates" style="right:50px">&#128260;</button>
+      <button id="btn-settings-room" class="rail-btn" title="Settings">⚙</button>
+            <button id="btn-leave" class="rail-btn danger" title="Leave room">🚪</button>
+          </div>
+        </nav>
+
+        <!-- Channel list sidebar -->
+        <aside class="sidebar">
+          <div class="sidebar-header">
+            <h2 id="room-name">Room</h2>
+            <span id="room-self" class="muted"></span>
+            <span id="app-version" class="muted" style="font-size:11px;"></span>
+            <div class="room-code-row">
+              <code id="room-code-chip" class="room-code"></code>
+              <button id="btn-copy-code" class="mini-btn" title="Copy room code">Copy</button>
+            </div>
+            <div id="connect-info" class="connect-info hidden"></div>
+          </div>
+
+          <div class="channel-sections">
+            <div class="section-label">Voice</div>
+            <button class="channel" data-channel="voice"><span class="channel-icon">&#127908;</span> Voice Chat</button>
+
+            <div class="section-label">Share</div>
+            <button class="channel" data-channel="screenshare"><span class="channel-icon">&#128421;</span> Screenshare</button>
+
+            <div class="section-label">Files</div>
+            <button class="channel" data-channel="files"><span class="channel-icon">&#128193;</span> Files</button>
+          </div>
+        </aside>
+
+        <!-- Center: active channel content -->
+        <main class="center">
+          <div id="panel-voice" class="panel active"></div>
+          <div id="panel-screenshare" class="panel"></div>
+          <div id="panel-files" class="panel"></div>
+        </main>
+
+        <!-- Members sidebar -->
+        <aside class="members">
+          <h3>Members</h3>
+          <div id="roster-list" class="roster-list"></div>
+        </aside>
+      </div>
+
+      <!-- Persistent voice control bar -->
+      <div class="control-bar hidden" id="control-bar">
+        <div class="control-bar-info">
+          <div class="avatar" id="control-bar-avatar">Y</div>
+          <div class="control-bar-self">
+            <span id="control-bar-name">You</span>
+            <div class="meter control-bar-meter"><div class="meter-fill" id="control-bar-meter-fill"></div></div>
+          </div>
+        </div>
+        <div class="control-bar-actions">
+          <button class="ctrl-btn" id="ctrl-mute" title="Mute">🎙️</button>
+          <button class="ctrl-btn" id="ctrl-deafen" title="Deafen">🔈</button>
+          <button class="ctrl-btn" id="ctrl-share" title="Share your screen">🖥️</button>
+          <button class="ctrl-btn danger" id="ctrl-disconnect" title="Disconnect">📞</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

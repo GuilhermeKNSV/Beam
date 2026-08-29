@@ -1,0 +1,48 @@
+{
+  "name": "beam",
+  "version": "1.2.0",
+  "description": "Beam — local-first personal voice-call / screenshare / file-transfer desktop app",
+  "type": "module",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "smoke": "electron . --smoke",
+    "dist": "electron-builder --win portable nsis"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "electron": "33.2.1",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "ai.beam.app",
+    "productName": "Beam",
+    "files": [
+      "src/**/*"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "portable",
+        "nsis"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "portable": {
+      "artifactName": "Beam-Portable-${version}.exe"
+    },
+    "nsis": {
+      "artifactName": "Beam-Setup-${version}.exe",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "license": "MIT"
+}

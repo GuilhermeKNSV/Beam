@@ -1,0 +1,10 @@
+node_modules/
+dist/
+out/
+*.log
+.openclaw/
+_openclaw_tmp/
+_appveyor.yml
+_thumbs.db
+.DS_Store
+*.tmp
