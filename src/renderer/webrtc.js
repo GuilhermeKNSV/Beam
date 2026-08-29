@@ -114,7 +114,7 @@ class Peer {
   addTrack(track, stream, role) {
     if (this.localTracks.has(track.id)) return;
     const sender = this.pc.addTrack(track, stream);
-    console.log("[webrtc] addTrack", peerId, role, track.id, track.kind, "readyState=" + track.readyState);
+    console.log("[webrtc] addTrack", this.id, role, track.id, track.kind, "readyState=" + track.readyState);
     this.localTracks.set(track.id, { track, stream, role, sender });
   }
 
