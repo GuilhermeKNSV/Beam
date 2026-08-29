@@ -76,7 +76,7 @@ function qualityToParams() {
   const q = state.config.screenshare || {};
   const scale = resolutionScale(q.resolution || 'source');
   const maxFramerate = q.fps || 30;
-  const maxBitrate = q.bitrate === 'auto' ? undefined : (q.bitrateMbps || 8) * 1_000_000;
+  const maxBitrate = q.bitrate === 'auto' ? 20_000_000 : (q.bitrateMbps || 20) * 1_000_000;
   return { maxBitrate, maxFramerate, scaleResolutionDownBy: scale };
 }
 
@@ -125,8 +125,8 @@ function openPicker(reconfigureMode) {
     bitrateSel.append(el('option', { value: 'auto' }, 'Auto'));
     bitrateSel.append(el('option', { value: 'manual' }, 'Manual (2–80 Mbps)'));
     bitrateSel.value = state.config.screenshare.bitrate === 'auto' ? 'auto' : 'manual';
-    const bitrateSlider = el('input', { type: 'range', min: 2, max: 80, step: 1, value: state.config.screenshare.bitrateMbps || 8 });
-    const bitrateLabel = el('span', { class: 'field-value' }, `${state.config.screenshare.bitrateMbps || 8} Mbps`);
+    const bitrateSlider = el('input', { type: 'range', min: 2, max: 80, step: 1, value: state.config.screenshare.bitrateMbps || 20 });
+    const bitrateLabel = el('span', { class: 'field-value' }, `${state.config.screenshare.bitrateMbps || 20} Mbps`);
     bitrateSlider.addEventListener('input', () => {
       bitrateLabel.textContent = `${bitrateSlider.value} Mbps`;
       state.config.screenshare.bitrate = 'manual';
@@ -247,7 +247,7 @@ async function beginCapture(selected, quality, reconfigureMode) {
   const shareSound = !!quality.shareSound;
   const scale = resolutionScale(quality.resolution);
   const maxFramerate = quality.fps;
-  const maxBitrate = quality.bitrate === 'auto' ? undefined : quality.bitrate * 1_000_000;
+  const maxBitrate = quality.bitrate === 'auto' ? 20_000_000 : quality.bitrate * 1_000_000;
 
   state.config.screenshare.resolution = quality.resolution;
   state.config.screenshare.fps = quality.fps;
@@ -260,8 +260,17 @@ async function beginCapture(selected, quality, reconfigureMode) {
 
   let stream;
   try {
+    // Capture resolution constraints based on selected quality
+    const videoConstraints = { frameRate: { ideal: maxFramerate, max: maxFramerate } };
+    // For non-source modes, set explicit resolution caps
+    if (scale > 1) {
+      // Estimate based on common 1440p source (2560x1440)
+      const baseW = 2560, baseH = 1440;
+      videoConstraints.width = { ideal: Math.round(baseW / scale) };
+      videoConstraints.height = { ideal: Math.round(baseH / scale) };
+    }
     stream = await navigator.mediaDevices.getDisplayMedia({
-      video: { frameRate: maxFramerate },
+      video: videoConstraints,
       audio: shareSound,
     });
   } catch (err) {
