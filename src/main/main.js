@@ -157,6 +157,12 @@ function registerIpc(config) {
       }).then(resolve);
     });
   });
+
+ipcMain.handle('update:apply', async (_event, exePath) => {
+  const { spawn } = await import('child_process');
+  spawn(exePath, [], { detached: true, stdio: 'ignore' }).unref();
+  app.quit();
+});
 ipcMain.handle('app:info', () => ({
     version: app.getVersion(),
     platform: process.platform,

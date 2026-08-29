@@ -120,6 +120,7 @@ async function leaveRoom() {
 
 async function bootstrap() {
   try {
+    state.appInfo = await window.beam.getAppInfo();
     await loadConfig();
   } catch (err) {
     toast(`Could not load config: ${err.message}`, 'error');
@@ -137,6 +138,7 @@ async function bootstrap() {
   window.appLeaveRoom = () => leaveRoom();
   window.appOpenSettings = () => openSettings();
 
+    updaterUi.init();
   showView('home');
 }
 

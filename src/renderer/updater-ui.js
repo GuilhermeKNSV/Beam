@@ -1,84 +1,112 @@
-// Beam in-app update checker UI.
+// Beam updater UI — auto-checks on launch, shows version badge.
 import { state } from './state.js';
 import { $, el, toast } from './util.js';
 
-let checking = false;
+let updateInfo = null;
 let downloading = false;
 
 export function init() {
-  const btnHome = document.getElementById('btn-update-home');
-  const btnRoom = document.getElementById('btn-update-room');
-  if (btnHome) btnHome.addEventListener('click', checkAndPrompt);
-  if (btnRoom) btnRoom.addEventListener('click', checkAndPrompt);
+  showVersionBadge();
+  // Auto-check on launch (don't block UI)
+  setTimeout(checkForUpdate, 1500);
 }
 
-async function checkAndPrompt() {
-  if (checking || downloading) return;
-  checking = true;
-  toast('Checking for updates...', 'info');
-
+async function checkForUpdate() {
+  if (downloading) return;
   try {
     const result = await window.beam.checkUpdate();
-    checking = false;
-
     if (result.error) {
-      toast('Update check failed: ' + result.error, 'error');
+      console.warn('[updater]', result.error);
       return;
     }
-
-    if (!result.hasUpdate) {
-      toast('You are on the latest version (' + (result.latestVersion || state.appInfo?.version || '?') + ')', 'success');
-      return;
-    }
-
-    showUpdateModal(result);
+    updateInfo = result;
+    updateBadge(result);
   } catch (err) {
-    checking = false;
-    toast('Update check failed', 'error');
+    console.warn('[updater] check failed', err);
   }
+}
+
+function updateBadge(result) {
+  const badges = document.querySelectorAll('.version-badge');
+  badges.forEach((badge) => {
+    if (result.hasUpdate) {
+      badge.classList.add('has-update');
+      badge.title = 'Update available: v' + (result.latestVersion || '?') + ' — click to update';
+    } else {
+      badge.classList.remove('has-update');
+      badge.title = 'Beam v' + (result.currentVersion || '?') + ' (up to date)';
+    }
+  });
+}
+
+function showVersionBadge() {
+  // Home view: insert badge if not exists
+  const home = document.getElementById('view-home');
+  if (home && !home.querySelector('.version-badge')) {
+    const badge = el('div', { class: 'version-badge' }, '');
+    badge.addEventListener('click', onBadgeClick);
+    home.appendChild(badge);
+  }
+  // Room view: insert badge if not exists
+  const room = document.getElementById('view-room');
+  if (room && !room.querySelector('.version-badge')) {
+    const badge = el('div', { class: 'version-badge' }, '');
+    badge.addEventListener('click', onBadgeClick);
+    room.querySelector('.room-shell')?.appendChild(badge);
+  }
+  // Populate text
+  const ver = state.appInfo?.version || '?';
+  document.querySelectorAll('.version-badge').forEach((b) => { b.textContent = 'v' + ver; });
+}
+
+async function onBadgeClick() {
+  if (downloading) return;
+
+  if (!updateInfo) {
+    toast('Checking for updates...', 'info');
+    await checkForUpdate();
+  }
+
+  if (!updateInfo || !updateInfo.hasUpdate) {
+    toast('You are on the latest version', 'success');
+    return;
+  }
+
+  showUpdateModal(updateInfo);
 }
 
 function showUpdateModal(info) {
   const old = document.getElementById('update-modal');
   if (old) old.remove();
 
-  const items = [
-    el('h3', {}, 'Update Available'),
-    el('p', { class: 'update-version' },
-      'v' + (info.latestVersion || '?') + ' (you have v' + (info.currentVersion || '?') + ')'),
-  ];
-
-  if (info.changelog) {
-    items.push(el('pre', { class: 'update-changelog' }, info.changelog));
-  }
-
-  items.push(
-    el('div', { class: 'update-actions' },
-      el('button', { class: 'btn primary', id: 'update-download-btn' }, 'Download & Restart'),
-      el('button', { class: 'btn', id: 'update-later-btn' }, 'Later')),
-    el('div', { class: 'update-progress hidden', id: 'update-progress' },
-      el('div', { class: 'meter' }, el('div', { class: 'meter-fill', id: 'update-progress-fill' }))),
-    el('p', { class: 'update-status hidden', id: 'update-status' })
-  );
-
   const modal = el('div', { id: 'update-modal', class: 'update-modal' },
-    el('div', { class: 'update-modal-card' }, ...items));
+    el('div', { class: 'update-modal-card' },
+      el('h3', {}, 'Update Available'),
+      el('p', { class: 'update-version' },
+        'v' + (info.latestVersion || '?') + ' (you have v' + (info.currentVersion || '?') + ')'),
+      info.changelog ? el('pre', { class: 'update-changelog' }, info.changelog) : null,
+      el('div', { class: 'update-actions' },
+        el('button', { class: 'btn primary', id: 'update-dl-btn' }, 'Download & Restart'),
+        el('button', { class: 'btn', id: 'update-later-btn' }, 'Later')),
+      el('div', { class: 'update-progress hidden', id: 'update-progress' },
+        el('div', { class: 'meter' }, el('div', { class: 'meter-fill', id: 'update-progress-fill' }))),
+      el('p', { class: 'update-status hidden', id: 'update-status' }))
+  );
 
   document.body.appendChild(modal);
 
   document.getElementById('update-later-btn').addEventListener('click', () => modal.remove());
-  document.getElementById('update-download-btn').addEventListener('click', () => {
-    doUpdate(info.downloadUrl, modal);
-  });
+  document.getElementById('update-dl-btn').addEventListener('click', () => doUpdate(info, modal));
 }
 
-async function doUpdate(downloadUrl, modal) {
-  if (!downloadUrl) {
+async function doUpdate(info, modal) {
+  if (!info.downloadUrl) {
     toast('No download URL found', 'error');
     return;
   }
   downloading = true;
-  const dlBtn = document.getElementById('update-download-btn');
+
+  const dlBtn = document.getElementById('update-dl-btn');
   const laterBtn = document.getElementById('update-later-btn');
   const progress = document.getElementById('update-progress');
   const fill = document.getElementById('update-progress-fill');
@@ -95,7 +123,7 @@ async function doUpdate(downloadUrl, modal) {
   });
 
   try {
-    const result = await window.beam.downloadUpdate(downloadUrl);
+    const result = await window.beam.downloadUpdate(info.downloadUrl);
 
     if (result.error) {
       if (status) status.textContent = 'Download failed: ' + result.error;
@@ -105,11 +133,10 @@ async function doUpdate(downloadUrl, modal) {
     }
 
     if (status) status.textContent = 'Download complete! Restarting...';
-    toast('Update downloaded. Restarting...', 'success');
+    toast('Restarting with new version...', 'success');
 
-    const { spawn } = await import('child_process');
-    spawn(result.exePath, [], { detached: true, stdio: 'ignore' }).unref();
-    window.close();
+    // Let main process spawn the new exe and quit
+    await window.beam.applyUpdate(result.exePath);
   } catch (err) {
     if (status) status.textContent = 'Failed: ' + err.message;
     toast('Update failed', 'error');

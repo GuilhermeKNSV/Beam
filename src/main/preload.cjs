@@ -13,5 +13,6 @@ contextBridge.exposeInMainWorld('beam', {
   selectSource: (sourceId) => ipcRenderer.invoke('capture:select', sourceId),
   checkUpdate: () => ipcRenderer.invoke('update:check'),
   downloadUpdate: (url) => ipcRenderer.invoke('update:download', url),
+  applyUpdate: (exePath) => ipcRenderer.invoke('update:apply', exePath),
   onUpdateProgress: (cb) => { ipcRenderer.on('update:progress', (_e, data) => cb(data)); },
 });
