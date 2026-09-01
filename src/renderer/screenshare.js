@@ -375,6 +375,7 @@ export function onRemoteVideo(peerId, track) {
       .catch(err => console.error("[screenshare] remote video play() FAILED", peerId, err.message, err.name));
     entry = { videoEl, track, volume: 100, muted: false };
     remote.set(peerId, entry);
+  startStallMonitor();
   } else if (entry.track !== track) {
     entry.videoEl.srcObject = new MediaStream([track]);
     entry.videoEl.play()
@@ -432,6 +433,32 @@ function refreshStreamsList() {
     );
     list.append(card);
   }
+}
+
+
+// Detect and recover stalled remote videos (frame not updating).
+let _stallCheck = null;
+export function startStallMonitor() {
+  if (_stallCheck) return;
+  _stallCheck = setInterval(() => {
+    for (const [peerId, entry] of remote.entries()) {
+      if (!entry.videoEl || entry.videoEl.paused) continue;
+      const track = entry.videoEl.srcObject?.getVideoTracks()[0];
+      if (!track) continue;
+      if (track.muted && !entry._warnedMuted) {
+        console.warn('[screenshare] remote track STALLED (muted)', peerId);
+        entry._warnedMuted = true;
+        // Force reload the srcObject to restart the decoder
+        const s = entry.videoEl.srcObject;
+        entry.videoEl.srcObject = null;
+        setTimeout(() => { entry.videoEl.srcObject = s; entry._warnedMuted = false; }, 50);
+      }
+      if (!track.muted) entry._warnedMuted = false;
+    }
+  }, 3000);
+}
+export function stopStallMonitor() {
+  if (_stallCheck) { clearInterval(_stallCheck); _stallCheck = null; }
 }
 
 export function watch(peerId) {

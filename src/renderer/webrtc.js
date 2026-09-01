@@ -24,22 +24,25 @@ class Peer {
       });
     };
 
-    this.pc.onnegotiationneeded = async () => {
-      try {
-        console.log("[webrtc] negotiate", this.id, "signaling=" + this.pc.signalingState);
-        this.makingOffer = true;
-        await this.pc.setLocalDescription();
-        state.net.sendSignal(peerId, {
-          description: this.pc.localDescription.toJSON(),
-        });
-      } catch (err) {
-        console.error('negotiation failed', err);
-      } finally {
-        this.makingOffer = false;
-      }
-    };
-
-    this.pc.ontrack = (event) => {
+    this._negTimer = null;
+    this.pc.onnegotiationneeded = () => {
+      if (this._negTimer) return;
+      this._negTimer = setTimeout(async () => {
+        this._negTimer = null;
+        try {
+          console.log('[webrtc] negotiate', this.id, 'signaling=' + this.pc.signalingState);
+          this.makingOffer = true;
+          await this.pc.setLocalDescription();
+          state.net.sendSignal(this.id, {
+            description: this.pc.localDescription.toJSON(),
+          });
+        } catch (err) {
+          console.error('negotiation failed', err);
+        } finally {
+          this.makingOffer = false;
+        }
+      }, 50);
+    };this.pc.ontrack = (event) => {
       console.log("[webrtc] ontrack", peerId, event.track.kind, event.track.id, "readyState=" + event.track.readyState, "muted=" + event.track.muted);
         event.track.onmute = () => console.log("[webrtc] remote track MUTED", peerId, event.track.kind);
         event.track.onunmute = () => console.log("[webrtc] remote track UNMUTED", peerId, event.track.kind);
